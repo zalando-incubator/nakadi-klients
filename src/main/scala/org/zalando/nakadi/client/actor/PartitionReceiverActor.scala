@@ -129,7 +129,7 @@ class PartitionReceiver private (val endpoint: URI,
      *
      * See also http://json.org/ for string parsing semantics
      */
-    var stack: Int = 0
+    var depth: Int = 0
     var hasOpenString: Boolean = false
     val bout = new ByteArrayOutputStream(1024)
 
@@ -139,12 +139,14 @@ class PartitionReceiver private (val endpoint: URI,
           bout.write(byteItem.asInstanceOf[Int])
 
           if (byteItem == '"') hasOpenString = !hasOpenString
-          else if (!hasOpenString && byteItem == '{') stack += 1
+          else if (!hasOpenString && byteItem == '{') depth += 1
           else if (!hasOpenString && byteItem == '}') {
-            stack -= 1
+            depth -= 1
 
-            if (stack == 0 && bout.size != 0) {
+            if (depth == 0 && bout.size != 0) {
               val streamEvent = objectMapper.readValue(bout.toByteArray, classOf[SimpleStreamEvent])
+
+              // Q: Can 'streamEvent.events' be null? If not, the below doesn't make sense? AKa270116
 
               if (Option(streamEvent.events).isDefined && !streamEvent.events.isEmpty){
                 log.debug("received non-empty [streamEvent={}]", streamEvent)
@@ -161,6 +163,6 @@ class PartitionReceiver private (val endpoint: URI,
     }
   }
 
-  
+
   override def toString = s"PartitionReceiver(listeners=$listeners, lastCursor=$lastCursor, endpoint=$endpoint, topic=$topic, partitionId=$partitionId, parameters=$parameters, automaticReconnect=$automaticReconnect)"
 }
