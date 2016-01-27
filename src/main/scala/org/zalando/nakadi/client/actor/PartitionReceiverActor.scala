@@ -1,28 +1,19 @@
 package org.zalando.nakadi.client.actor
 
-import java.io.{IOException, ByteArrayOutputStream}
+import java.io.{ByteArrayOutputStream}
 import java.net.URI
 
 import akka.actor.{Props, ActorRef, ActorLogging, Actor}
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.MediaTypes._
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.model.{MediaRange, headers, HttpResponse, HttpRequest}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source, Flow}
+import akka.stream.scaladsl.{Sink, Source}
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.zalando.nakadi.client
 import org.zalando.nakadi.client.Utils.outgoingHttpConnection
-import org.zalando.nakadi.client.{Utils, Cursor, SimpleStreamEvent, ListenParameters}
+import org.zalando.nakadi.client.{Cursor, SimpleStreamEvent, ListenParameters}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-
-sealed case class Init()
-case class NewListener(listener: ActorRef)
-case class ConnectionOpened(topic: String, partition: String)
-case class ConnectionFailed(topic: String, partition: String, status: Int, error: String)
-case class ConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor])
-
 
 object PartitionReceiver{
   def props(endpoint: URI,
@@ -35,9 +26,17 @@ object PartitionReceiver{
             automaticReconnect: Boolean,
             objectMapper: ObjectMapper) =
     Props(new PartitionReceiver(endpoint, port, securedConnection, topic, partitionId, parameters, tokenProvider, automaticReconnect, objectMapper) )
+
+  // Actor messages
+  //
+  private object Init
+  case class NewListener(listener: ActorRef)
+  case class ConnectionOpened(topic: String, partition: String)
+  case class ConnectionFailed(topic: String, partition: String, status: Int, error: String)
+  case class ConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor])
 }
 
-class PartitionReceiver (val endpoint: URI,
+class PartitionReceiver private (val endpoint: URI,
                          val port: Int,
                          val securedConnection: Boolean,
                          val topic: String,
@@ -47,6 +46,8 @@ class PartitionReceiver (val endpoint: URI,
                          val automaticReconnect: Boolean,
                          val objectMapper: ObjectMapper)  extends Actor with ActorLogging
 {
+  import PartitionReceiver._
+
   var listeners: List[ActorRef] = List()
   var lastCursor: Option[Cursor] = None
 
@@ -57,7 +58,7 @@ class PartitionReceiver (val endpoint: URI,
   override def receive: Receive = {
     case Init => lastCursor match {
       case None => listen(parameters)
-      case Some(cursor) => listen(ListenParameters(Option(cursor.offset),
+      case Some(cursor) => listen(ListenParameters(Option(cursor.offset),   // Note: Is 'cursor.offset' supposed to be null? If not, 'Some(cursor.offset)' is likely more appropriate? AKa270116
                                                    parameters.batchLimit,
                                                    parameters.batchFlushTimeoutInSeconds,
                                                    parameters.streamLimit))
@@ -71,6 +72,7 @@ class PartitionReceiver (val endpoint: URI,
 
 
   // TODO check earlier ListenParameters
+  private
   def listen(parameters: ListenParameters) = {
     val request = HttpRequest(uri = requestUri(parameters))
                       .withHeaders(headers.Authorization(OAuth2BearerToken(tokenProvider.apply())),
@@ -107,7 +109,7 @@ class PartitionReceiver (val endpoint: URI,
   }
 
 
-
+  private
   def requestUri(parameters: ListenParameters) =
     String.format(client.URI_EVENT_LISTENING,
       topic,
@@ -118,6 +120,7 @@ class PartitionReceiver (val endpoint: URI,
       parameters.streamLimit.getOrElse(throw new IllegalStateException("no streamLimit set")).toString)
 
 
+  private
   def consumeStream(response: HttpResponse) = {
     /*
      * We can not simply rely on EOL for the end of each JSON object as
