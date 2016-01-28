@@ -59,7 +59,7 @@ public class NakadiTestService {
 
                         final Handler handler = handlerMap.get(receivedRequestPath);
                         if(handler == null || ! Objects.equals(handler.getRequestMethod(), receivedRequestMethod)) {
-                            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, handler.getResponseContentType());
+                           // exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, handler.getResponseContentType());
                             exchange.setResponseCode(StatusCodes.NOT_FOUND);
                             exchange.getResponseSender().send("invalid request: " + receivedRequestPath + " with request method: " + receivedRequestMethod);
                         }

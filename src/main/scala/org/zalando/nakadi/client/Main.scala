@@ -22,6 +22,8 @@ object Main {
 
     val listener = new Listener {
 
+      override def id = "test"
+
       override def onReceive(topic: String, partition: String, cursor: Cursor, event: Event): Unit = println(s">>>>> [event=$event, partition=$partition]")
 
       override def onConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor]): Unit = println(s"connection closed [partition=$partition]")
