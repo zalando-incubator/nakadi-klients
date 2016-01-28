@@ -1,11 +1,8 @@
-import scala.collection.JavaConverters._
-
 name := "nakadi-klients"
 
 version := "0.3.0-SNAPSHOT"
 
-scalaVersion := "2.11.6"
-
+scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq(
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
@@ -23,19 +20,27 @@ scalacOptions ++= Seq(
 resolvers += Resolver.mavenLocal
 resolvers += "Maven Central Server" at "http://repo1.maven.org/maven2"
 
-libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.11",
-  "com.google.guava" % "guava" % "19.0",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.7.0",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.3",
-  "ch.qos.logback" % "logback-classic" % "1.1.3",
-  "com.typesafe.akka" %% "akka-http-experimental" % "2.0.2",
+libraryDependencies ++= {
+  // Note: Akka 2.4.1 is available, but it caused a deprication warning (error with out settings) on command line
+  //      compilation. Also, we need no 2.4.x features. AKa280116
+  //
+  val akkaVer = "2.3.12"
+  val undertowVer = "1.2.12.Final"
 
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.11" % "test",
-  "org.scalatest" %% "scalatest" % "2.2.4" % "test",
-  "io.undertow" % "undertow-core"    % "1.2.12.Final" % "test",
-  "io.undertow" % "undertow-servlet" % "1.2.12.Final" % "test",
-  "org.apache.commons" % "commons-io" % "1.3.2" % "test",
-  "com.google.code.findbugs" % "jsr305" % "1.3.9" % "test"
-)
+  Seq(
+    "com.typesafe.akka" %% "akka-actor" % akkaVer,
+    "com.typesafe.akka" %% "akka-http-experimental" % "2.0.2",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
+    "ch.qos.logback" % "logback-classic" % "1.1.3",
+    "com.fasterxml.jackson.core" % "jackson-core" % "2.7.0",
+    "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.3",
+    "com.google.guava" % "guava" % "19.0",
+
+    "com.typesafe.akka" %% "akka-testkit" % akkaVer % "test",
+    "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+    "io.undertow" % "undertow-core" % undertowVer % "test",
+    "io.undertow" % "undertow-servlet" % undertowVer % "test",
+    "org.apache.commons" % "commons-io" % "1.3.2" % "test",
+    "com.google.code.findbugs" % "jsr305" % "1.3.9" % "test"
+  )
+}
