@@ -12,9 +12,14 @@ object KlientBuilder{
       new KlientBuilder(endpoint, port, securedConnection, tokenProvider, objectMapper)
 }
 
-class KlientBuilder(val endpoint: URI = null, val port: Int, val securedConnection: Boolean, val tokenProvider: () => String = null, val objectMapper: ObjectMapper = null)
+class KlientBuilder private (val endpoint: URI = null, val port: Int, val securedConnection: Boolean, val tokenProvider: () => String = null, val objectMapper: ObjectMapper = null)
   extends LazyLogging
 {
+  // Why are you wrapping null tests like that? Just 'if (subject == null)' is possible. However, best to have "customs checking"
+  // at the Java/Scala border and not to leak nulls to Scala, at all. AKa280116
+  //
+  // Also, would like non-error path to come first: subject else throw ... (like elsewhere you have)
+
   private def checkNotNull[T](subject: T): T =
                                    if(Option(subject).isEmpty) throw new NullPointerException else subject
 
@@ -45,20 +50,22 @@ class KlientBuilder(val endpoint: URI = null, val port: Int, val securedConnecti
 
 
   def defaultObjectMapper: ObjectMapper = {
-    val mapper = new ObjectMapper
-    mapper.registerModule(new DefaultScalaModule)
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-    mapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES)
-    mapper.addHandler(new DeserializationProblemHandler() {
-      override def handleUnknownProperty(ctxt: DeserializationContext, jp: JsonParser, deserializer: JsonDeserializer[_], beanOrClass: AnyRef, propertyName: String): Boolean = {
-        logger.warn(s"unknown property occurred in JSON representation: [beanOrClass=$beanOrClass, property=$propertyName]")
-       true
-      }
-    })
-    mapper
+    new ObjectMapper()
+      .registerModule(new DefaultScalaModule)
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+      .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+      .setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES)
+      .addHandler(new DeserializationProblemHandler() {
+        override def handleUnknownProperty(ctxt: DeserializationContext, jp: JsonParser, deserializer: JsonDeserializer[_], beanOrClass: AnyRef, propertyName: String): Boolean = {
+          logger.warn(s"unknown property occurred in JSON representation: [beanOrClass=$beanOrClass, property=$propertyName]")
+          true
+        }
+      })
   }
 
+  // Interesting. I see why you want to call 'build' with paranthesis ('build()'). Normally, if a function is defined
+  // in Scala with '()' that indicates side effects (this is just a convention). But if I take those away from the
+  // declaration, calling it as 'build()' no longer works. It should not make a difference. Need to check on this. AKa280116
 
   def build(): Klient = new KlientImpl(
                   checkState(endpoint,      (s: URI) => Option(s).isDefined, "endpoint is not set -> try withEndpoint()"),
