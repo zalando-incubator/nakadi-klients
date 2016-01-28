@@ -1,11 +1,9 @@
 package org.zalando.nakadi.client
 
 import java.net.URI
-import javax.net.ssl.SSLContext
 
 import akka.actor._
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.{HttpsContext, Http}
 import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.model._
@@ -36,9 +34,11 @@ protected class KlientImpl(val endpoint: URI, val port: Int, val securedConnecti
 
   val logger = Logger(LoggerFactory.getLogger("KlientImpl"))
 
+  // Note: This 'checkNotNull' is different from the one in 'KlientBuilder'. Could get away from having nulls, at all,
+  //      or make it a utility function. AKa280116
 
-  def checkNotNull(subject: Any, message: String) = if(Option(subject).isEmpty) throw new IllegalArgumentException(message)
-  def checkExists(subject: Option[Any], message: String) = if(subject.isEmpty) throw new IllegalArgumentException(message)
+  private def checkNotNull(subject: Any, message: String) = if(Option(subject).isEmpty) throw new IllegalArgumentException(message)
+  private def checkExists(subject: Option[Any], message: String) = if(subject.isEmpty) throw new IllegalArgumentException(message)
 
 
   /**
@@ -142,7 +142,7 @@ protected class KlientImpl(val endpoint: URI, val port: Int, val securedConnecti
 
 
   /**
-   * Non-blocking subscription to a topic requires a `EventListener` implementation. The event listener must be thread-safe because
+   * Non-blocking subscription to a topic requires an `EventListener` implementation. The event listener must be thread-safe because
    * the listener listens to all partitions of a topic (one thread each).
    *
    * @param parameters listen parameters
@@ -152,7 +152,7 @@ protected class KlientImpl(val endpoint: URI, val port: Int, val securedConnecti
   override def subscribeToTopic(topic: String, parameters: ListenParameters, listener: Listener, autoReconnect: Boolean): Future[Unit] = {
     getPartitions(topic).map{_ match {
       case Left(errorMessage) =>
-          throw new KlientException(s"a problem ocurred while subscribing to [topic=$topic, errorMessage=$errorMessage]")
+          throw new KlientException(s"a problem ocurred while subscribing to [topic=$topic]: $errorMessage")
       case Right(partitions: List[TopicPartition]) =>
           partitions.foreach(p => listenForEvents(topic,
                                                   p.partitionId,
@@ -174,6 +174,7 @@ protected class KlientImpl(val endpoint: URI, val port: Int, val securedConnecti
    * Post a single event to the given topic.  Partition selection is done using the defined partition resolution.
    * The partition resolution strategy is defined per topic and is managed by event store (currently resolved from
    * hash over Event.orderingKey).
+   *
    * @param topic  target topic
    * @param event  event to be posted
    * @return Option representing the error message or None in case of success

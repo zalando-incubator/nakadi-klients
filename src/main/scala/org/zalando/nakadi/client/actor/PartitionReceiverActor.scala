@@ -15,14 +15,6 @@ import org.zalando.nakadi.client.Utils.outgoingHttpConnection
 import org.zalando.nakadi.client.{Cursor, SimpleStreamEvent, ListenParameters}
 import scala.concurrent.ExecutionContext.Implicits.global
 
-
-sealed case class Init()
-case class NewListener(listenerId: String, listener: ActorRef)
-case class ConnectionOpened(topic: String, partition: String)
-case class ConnectionFailed(topic: String, partition: String, status: Int, error: String)
-case class ConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor])
-
-
 object PartitionReceiver{
   def props(endpoint: URI,
             port: Int,
@@ -34,9 +26,17 @@ object PartitionReceiver{
             automaticReconnect: Boolean,
             objectMapper: ObjectMapper) =
     Props(new PartitionReceiver(endpoint, port, securedConnection, topic, partitionId, parameters, tokenProvider, automaticReconnect, objectMapper) )
+
+  // Actor messages
+  //
+  private object Init
+  case class NewListener(listenerId: String, listener: ActorRef)
+  case class ConnectionOpened(topic: String, partition: String)
+  case class ConnectionFailed(topic: String, partition: String, status: Int, error: String)
+  case class ConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor])
 }
 
-class PartitionReceiver (val endpoint: URI,
+class PartitionReceiver private (val endpoint: URI,
                          val port: Int,
                          val securedConnection: Boolean,
                          val topic: String,
@@ -46,6 +46,8 @@ class PartitionReceiver (val endpoint: URI,
                          val automaticReconnect: Boolean,
                          val objectMapper: ObjectMapper)  extends Actor with ActorLogging
 {
+  import PartitionReceiver._
+
   var listeners: Map[String, ActorRef] = Map()
 
   var lastCursor: Option[Cursor] = None
@@ -60,7 +62,7 @@ class PartitionReceiver (val endpoint: URI,
   override def receive: Receive = {
     case Init => lastCursor match {
       case None => listen(parameters)
-      case Some(cursor) => listen(ListenParameters(Option(cursor.offset),
+      case Some(cursor) => listen(ListenParameters(Option(cursor.offset),   // Note: Is 'cursor.offset' supposed to be null? If not, 'Some(cursor.offset)' is likely more appropriate? AKa270116
                                                    parameters.batchLimit,
                                                    parameters.batchFlushTimeoutInSeconds,
                                                    parameters.streamLimit))
@@ -75,6 +77,7 @@ class PartitionReceiver (val endpoint: URI,
 
 
   // TODO check earlier ListenParameters
+  private
   def listen(parameters: ListenParameters) = {
     val request = HttpRequest(uri = buildRequestUri(parameters))
                       .withHeaders(headers.Authorization(OAuth2BearerToken(tokenProvider.apply())),
@@ -123,6 +126,7 @@ class PartitionReceiver (val endpoint: URI,
     else log.info("[automaticReconnect={}] -> no reconnect", automaticReconnect)
   }
 
+  private
   def buildRequestUri(parameters: ListenParameters) =
     String.format(client.URI_EVENT_LISTENING,
       topic,
@@ -133,6 +137,7 @@ class PartitionReceiver (val endpoint: URI,
       parameters.streamLimit.getOrElse(throw new IllegalStateException("no streamLimit set")).toString)
 
 
+  private
   def consumeStream(response: HttpResponse) = {
     /*
      * We can not simply rely on EOL for the end of each JSON object as
@@ -141,7 +146,7 @@ class PartitionReceiver (val endpoint: URI,
      *
      * See also http://json.org/ for string parsing semantics
      */
-    var stack: Int = 0
+    var depth: Int = 0
     var hasOpenString: Boolean = false
     val bout = new ByteArrayOutputStream(RECEIVE_BUFFER_SIZE)
 
@@ -151,12 +156,14 @@ class PartitionReceiver (val endpoint: URI,
           bout.write(byteItem.asInstanceOf[Int])
 
           if (byteItem == '"') hasOpenString = !hasOpenString
-          else if (!hasOpenString && byteItem == '{') stack += 1
+          else if (!hasOpenString && byteItem == '{') depth += 1
           else if (!hasOpenString && byteItem == '}') {
-            stack -= 1
+            depth -= 1
 
-            if (stack == 0 && bout.size != 0) {
+            if (depth == 0 && bout.size != 0) {
               val streamEvent = objectMapper.readValue(bout.toByteArray, classOf[SimpleStreamEvent])
+
+              // Q: Can 'streamEvent.events' be null? If not, the below doesn't make sense? AKa270116
 
               if (Option(streamEvent.events).isDefined && streamEvent.events.nonEmpty){
                 log.debug("received non-empty [streamEvent={}]", streamEvent)
@@ -172,6 +179,6 @@ class PartitionReceiver (val endpoint: URI,
     }
   }
 
-  
+
   override def toString = s"PartitionReceiver(listeners=$listeners, lastCursor=$lastCursor, endpoint=$endpoint, topic=$topic, partitionId=$partitionId, parameters=$parameters, automaticReconnect=$automaticReconnect)"
 }

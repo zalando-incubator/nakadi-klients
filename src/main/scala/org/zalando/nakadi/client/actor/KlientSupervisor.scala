@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor._
 import akka.util.Timeout
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.zalando.nakadi.client.actor.PartitionReceiver.NewListener
 import org.zalando.nakadi.client.{Listener, KlientException, ListenParameters}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -27,7 +28,7 @@ object KlientSupervisor{
 }
 
 
-class KlientSupervisor(val endpoint: URI, val port: Int, val securedConnection: Boolean, val tokenProvider: () => String, val objectMapper: ObjectMapper)
+class KlientSupervisor private (val endpoint: URI, val port: Int, val securedConnection: Boolean, val tokenProvider: () => String, val objectMapper: ObjectMapper)
   extends Actor with ActorLogging{
 
   import akka.actor.SupervisorStrategy._

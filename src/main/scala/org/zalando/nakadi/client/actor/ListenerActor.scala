@@ -2,12 +2,13 @@ package org.zalando.nakadi.client.actor
 
 import akka.actor.{PoisonPill, Props, ActorLogging, Actor}
 import org.zalando.nakadi.client.{Cursor, Event, Listener}
+import org.zalando.nakadi.client.actor.PartitionReceiver._
 
 object ListenerActor{
   def props(topic: String, listener: Listener) = Props(new ListenerActor(topic, listener))
 }
 
-class ListenerActor(val topic: String, val listener: Listener) extends Actor with ActorLogging{
+class ListenerActor private (val topic: String, val listener: Listener) extends Actor with ActorLogging{
 
   context.system.eventStream.subscribe(self, classOf[Unsubscription])
 
