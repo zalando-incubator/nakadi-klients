@@ -1,32 +1,9 @@
 package org.zalando.nakadi.client
 
-import java.io.{IOException, ByteArrayOutputStream}
 import java.net.URI
 
 import akka.actor.ActorSystem
-import akka.http.javadsl.model
-import akka.http.scaladsl
-import akka.http.scaladsl.model.MediaTypes._
-import akka.http.scaladsl.model.headers.OAuth2BearerToken
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler
-import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import org.zalando.nakadi.client.actor.{ConnectionOpened, ConnectionClosed}
-
-import scala.concurrent.Await
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model._
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl._
-
-import scala.concurrent.Future
-
-
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-
 
 object Main {
 

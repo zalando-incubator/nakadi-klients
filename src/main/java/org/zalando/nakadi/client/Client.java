@@ -35,6 +35,7 @@ public interface Client {
      * Post a single event to the given topic.  Partition selection is done using the defined partition resolution.
      * The partition resolution strategy is defined per topic and is managed by event store (currently resolved from
      * hash over Event.orderingKey).
+     *
      * @param topic  target topic
      * @param event  event to be posted
      * @return Option representing the error message or None in case of success
@@ -67,7 +68,7 @@ public interface Client {
      *
      * @param parameters listen parameters
      * @param listener  listener consuming all received events
-     * @return Either error message or connection was closed and reconnect is set to false
+     * @return Either error message or connection was closed and reconnect is set to false   // AKa270116: is 'void' below
      */
     void listenForEvents(String topic,
                          String partitionId,
@@ -82,7 +83,7 @@ public interface Client {
      *
      * @param parameters listen parameters
      * @param listener  listener consuming all received events
-     * @return {Future} instance of listener threads
+     * @return {Future} instance of listener threads            // AKa270116: is 'void' below
      */
     void subscribeToTopic(String topic,
                           ListenParameters parameters,
