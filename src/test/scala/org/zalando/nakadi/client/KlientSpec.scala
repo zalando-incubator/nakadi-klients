@@ -4,8 +4,6 @@ import java.net.URI
 import java.util
 import java.util.concurrent.atomic.AtomicReference
 
-import com.fasterxml.jackson.databind.{PropertyNamingStrategy, SerializationFeature, DeserializationFeature, ObjectMapper}
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.google.common.collect.Iterators
 import com.typesafe.scalalogging.LazyLogging
 import io.undertow.util.{HeaderValues, HttpString, Headers}
@@ -13,14 +11,20 @@ import org.scalatest.concurrent.PatienceConfiguration.{Timeout => ScalaTestTimeo
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import org.zalando.nakadi.client.actor.PartitionReceiver
+import org.zalando.nakadi.client.tools.AnyJsonFormat
 import org.zalando.nakadi.client.utils.NakadiTestService
 import org.zalando.nakadi.client.utils.NakadiTestService.Builder
+import spray.json.{JsonParser, JsValue, JsObject}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.language.implicitConversions
 
+import org.zalando.nakadi.client.tools.AnyJsonFormat._
+import spray.json._
+import DefaultJsonProtocol._
+import MyJsonProtocol._
 
 class TestListener extends  Listener {
   var receivedEvents = new AtomicReference[List[Event]](List[Event]())
@@ -49,11 +53,6 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
   var klient: Klient = null
   var service: NakadiTestService = null
-  val objectMapper = new ObjectMapper
-  objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-  objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-  objectMapper.setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES)
-  objectMapper.registerModule(new DefaultScalaModule)
 
   val MEDIA_TYPE = "application/json"
   val TOKEN = "<OAUTH Token>"
@@ -123,15 +122,27 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
   "A Klient" must {
     "retrieve Nakadi metrics" in {
-      val expectedResponse = Map("post_event" -> Map("calls_per_second" -> "0.005",
-                                                      "count" -> "5",
-                                                      "status_codes" -> Map("201" -> 5)),
-                                  "get_metrics" -> Map("calls_per_second" -> "0.001",
-                                                       "count" -> "1",
-                                                       "status_codes" -> Map("401" -> 1)))
+      import AnyJsonFormat._
+      import DefaultJsonProtocol._
 
-      // ---
-      val expectedResponseAsString = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(expectedResponse)
+      val expectedResponse = Map(
+          "post_event" -> Map(
+            "calls_per_second" -> 0.005,
+            "count" -> 5,
+            "status_codes" -> Map(
+              "201" -> 5
+            )
+          ),
+          "get_metrics" -> Map(
+            "calls_per_second" -> 0.001,
+            "count" -> 1,
+            "status_codes" -> Map(
+              "401" -> 1
+            )
+          )
+      )
+      val expectedResponseAsString = expectedResponse.toJson.prettyPrint
+
       val requestMethod = new HttpString("GET")
       val requestPath = "/metrics"
       val responseStatusCode: Int = 200
@@ -155,10 +166,11 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
     }
 
     "retrieve Nakadi topics" in {
+      import DefaultJsonProtocol._
+
       val expectedResponse = List(Topic("test-topic-1"), Topic("test-topic-2"))
+      val expectedResponseAsString = expectedResponse.toJson.prettyPrint
 
-
-      val expectedResponseAsString = objectMapper.writeValueAsString(expectedResponse)
       val requestMethod = new HttpString("GET")
       val requestPath = "/topics"
       val responseStatusCode = 200
@@ -215,14 +227,15 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
       }
 
       val request = performStandardRequestChecks(requestPath, requestMethod)
-      val sentEvent = objectMapper.readValue(request.getRequestBody, classOf[Event])
+      val sentEvent = JsonParser(request.getRequestBody).convertTo[Event]   //objectMapper.readValue(request.getRequestBody, classOf[Event])
       sentEvent should be(event)
     }
 
     "retreive partitions of a topic" in {
-      val expectedPartitions = List(TopicPartition("111", "0", "0"), TopicPartition("222", "0", "1"))
-      val expectedResponse = objectMapper.writeValueAsString(expectedPartitions)
+      import DefaultJsonProtocol._
 
+      val expectedPartitions = List(TopicPartition("111", "0", "0"), TopicPartition("222", "0", "1"))
+      val expectedResponse = expectedPartitions.toJson.prettyPrint
 
       val topic = "test-topic-1"
       val requestMethod = new HttpString("GET")
@@ -250,8 +263,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
     "retrieve a particular partition" in {
       val expectedPartition = TopicPartition("111", "0", "0")
-      val expectedResponse = objectMapper.writeValueAsString(expectedPartition)
-
+      val expectedResponse = expectedPartition.toJson.prettyPrint
 
       val partitionId = "111"
       val topic = "test-topic-1"
@@ -281,10 +293,12 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
 
     "subscribe to topic" in {
+      import DefaultJsonProtocol._
+
       val partition = TopicPartition("p1", "0", "4")
       val partition2 = TopicPartition("p2", "1", "1")
       val partitions = List(partition, partition2)
-      val partitionsAsString = objectMapper.writeValueAsString(partitions)
+      val partitionsAsString = partitions.toJson.toString
 
       val event = Event("type-1",
                         "ARTICLE:123456",
@@ -293,7 +307,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
       val streamEvent1 = SimpleStreamEvent(Cursor("p1", partition.newestAvailableOffset), List(event), List())
 
-      val streamEvent1AsString = objectMapper.writeValueAsString(streamEvent1) + "\n"
+      val streamEvent1AsString = streamEvent1.toJson.toString + "\n"
 
       //--
 
@@ -304,7 +318,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
       val streamEvent2 = SimpleStreamEvent(Cursor("p2", partition2.newestAvailableOffset), List(event2), List())
 
-      val streamEvent2AsString = objectMapper.writeValueAsString(streamEvent2) + "\n"
+      val streamEvent2AsString = streamEvent2.toJson.toString + "\n"
 
       //--
 
@@ -396,10 +410,12 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
     }
 
     "reconnect, if autoReconnect = true and stream was closed by Nakadi" in {
+      import DefaultJsonProtocol._
+
       val partition = TopicPartition("p1", "0", "4")
       val partition2 = TopicPartition("p2", "1", "1")
       val partitions = List(partition, partition2)
-      val partitionsAsString = objectMapper.writeValueAsString(partitions)
+      val partitionsAsString = partitions.toJson.prettyPrint
 
       val event = Event("type-1",
         "ARTICLE:123456",
@@ -408,7 +424,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
       val streamEvent1 = SimpleStreamEvent(Cursor("p1", "0"), List(event), List())
 
-      val streamEvent1AsString = objectMapper.writeValueAsString(streamEvent1) + "\n"
+      val streamEvent1AsString = streamEvent1.toJson.toString + "\n"
 
       val topic = "test-topic-1"
       val partitionsRequestPath = s"/topics/$topic/partitions"
@@ -475,11 +491,12 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
 
   def startServiceForEventListening() = {
+    import DefaultJsonProtocol._
 
     val partition = TopicPartition("p1", "0", "4")
     val partition2 = TopicPartition("p2", "1", "1")
     val partitions = List(partition, partition2)
-    val partitionsAsString = objectMapper.writeValueAsString(partitions)
+    val partitionsAsString = partitions.toJson.prettyPrint
 
     val event = Event("type-1",
       "ARTICLE:123456",
@@ -488,7 +505,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
     val streamEvent1 = SimpleStreamEvent(Cursor("p1", "0"), List(event), List())
 
-    val streamEvent1AsString = objectMapper.writeValueAsString(streamEvent1) + "\n"
+    val streamEvent1AsString = streamEvent1.toJson.toString + "\n"
 
     val topic = "test-topic-1"
     val partitionsRequestPath = s"/topics/$topic/partitions"

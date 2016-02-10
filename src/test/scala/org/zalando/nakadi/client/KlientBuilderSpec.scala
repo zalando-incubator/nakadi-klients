@@ -2,7 +2,6 @@ package org.zalando.nakadi.client
 
 import java.net.URI
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.scalatest.{WordSpec, Matchers}
 
 class KlientBuilderSpec extends WordSpec with Matchers {
@@ -33,19 +32,6 @@ class KlientBuilderSpec extends WordSpec with Matchers {
           .withEndpoint(new URI("localhost:8080"))
           .build()
       }
-    }
-
-    "should use the specified ObjectMapper" in {
-
-      val objectMapper = new ObjectMapper()
-
-      val klient: KlientImpl = KlientBuilder()
-        .withEndpoint(new URI("localhost:8080"))
-        .withTokenProvider(() => "my-token")
-        .withObjectMapper(Some(objectMapper))
-        .build().asInstanceOf[KlientImpl]
-
-      klient.objectMapper == objectMapper should be(true)
     }
   }
 }

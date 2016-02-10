@@ -9,16 +9,17 @@ import akka.http.scaladsl.model.headers.OAuth2BearerToken
 import akka.http.scaladsl.model.{MediaRange, headers, HttpResponse, HttpRequest}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.zalando.nakadi.client
 import org.zalando.nakadi.client.Utils.outgoingHttpConnection
 import org.zalando.nakadi.client.actor.KlientSupervisor._
 import org.zalando.nakadi.client.actor.ListenerActor._
 import org.zalando.nakadi.client.{Cursor, SimpleStreamEvent, ListenParameters}
+import spray.json.JsonParser
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
+import org.zalando.nakadi.client.MyJsonProtocol._
 
 object PartitionReceiver{
 
@@ -49,9 +50,8 @@ object PartitionReceiver{
             partitionId: String,
             parameters: ListenParameters,
             tokenProvider: () => String,
-            automaticReconnect: Boolean,
-            objectMapper: ObjectMapper) =
-    Props(new PartitionReceiver(endpoint, port, securedConnection, topic, partitionId, parameters, tokenProvider, automaticReconnect, objectMapper) )
+            automaticReconnect: Boolean) =
+    Props(new PartitionReceiver(endpoint, port, securedConnection, topic, partitionId, parameters, tokenProvider, automaticReconnect) )
 }
 
 class PartitionReceiver private (val endpoint: URI,
@@ -61,8 +61,7 @@ class PartitionReceiver private (val endpoint: URI,
                                  val partitionId: String,
                                  val parameters: ListenParameters,
                                  val tokenProvider: () => String,
-                                 val automaticReconnect: Boolean,
-                                 val objectMapper: ObjectMapper)  extends Actor with ActorLogging
+                                 val automaticReconnect: Boolean)  extends Actor with ActorLogging
 {
   import PartitionReceiver._
 
@@ -183,7 +182,7 @@ class PartitionReceiver private (val endpoint: URI,
             depth -= 1
 
             if (depth == 0 && bout.size != 0) {
-              val streamEvent = objectMapper.readValue(bout.toByteArray, classOf[SimpleStreamEvent])
+              val streamEvent = JsonParser(bout.toByteArray).convertTo[SimpleStreamEvent]
 
               if (Option(streamEvent.events).isDefined && streamEvent.events.nonEmpty){
                 log.info("received non-empty [streamEvent={}]", streamEvent)
