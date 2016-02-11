@@ -12,19 +12,25 @@ class AnyJsonFormatTest extends FlatSpec with Matchers {
   behavior of "Conversion of 'Map[String,Any]' to/from JSON"
 
   {
+    val longValue = 3000000000L   // wouldn't fit in Int
+    assert( longValue > Integer.MAX_VALUE )
+    assert( JsNumber(longValue).value == longValue )
+
     val a = Map[String,Any](
       "a" -> 42,
       "b" -> 12.34,
       "c" -> "tiger",
       "d" -> true,
-      "e" -> false
+      "e" -> false,
+      "f" -> longValue
     )
     val a_jso = JsObject(
       "a" -> JsNumber(42),
       "b" -> JsNumber(12.34),
       "c" -> JsString("tiger"),
       "d" -> JsTrue,
-      "e" -> JsFalse
+      "e" -> JsFalse,
+      "f" -> JsNumber(longValue)
     )
 
     it should "write out a Map" in {
@@ -36,28 +42,30 @@ class AnyJsonFormatTest extends FlatSpec with Matchers {
     }
 
     it should "read in a Map" in {
-      val s = a_jso.prettyPrint
-      val actual = s.toJson.convertTo[Map[String, Any]]
+      val actual = a_jso.convertTo[Map[String, Any]]
 
       actual should contain theSameElementsAs a
     }
   }
 
   {
-    val m = Map(
+    val m = Map[String,Any](
       "inner" -> Map(
         "a" -> 42
-      )
+      ),
+      "b" -> true     // so that the value type becomes 'Any'
     )
     val m_jso = JsObject(
       "inner" -> JsObject(
         "a" -> JsNumber(42)
-      )
+      ),
+      "b" -> JsTrue
     )
 
     it should "write Maps recursively" in {
       val actual = m.toJson
 
+      info(actual.toString)
       actual.toString shouldBe m_jso.toString
     }
 
