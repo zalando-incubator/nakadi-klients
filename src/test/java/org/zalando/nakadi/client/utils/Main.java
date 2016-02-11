@@ -15,6 +15,7 @@ import java.util.concurrent.Future;
 
 import scala.Option;
 import scala.collection.JavaConversions;
+import scala.collection.mutable.AnyRefMap;
 import scala.util.Either;
 
 
@@ -37,7 +38,10 @@ public class Main {
         meta.put("id", "1234567890");
 
         final Future<Either<String, Void>> f =
-                                            client.postEvent("test", new Event("eventType", "orderingKey", meta, "{}"));
+                                            client.postEvent("test", new Event("eventType", "orderingKey", meta,
+                                                    scala.collection.immutable.Map$.MODULE$.<String,Object>empty()  /*was: "{}"*/));
+
+        // ^-- Above, see for creating an empty Scala map in Java -> http://stackoverflow.com/questions/14365048/how-do-i-create-an-empty-immutable-scala-map-in-java
 
         final Either<String, Void> postResult = f.get();
 

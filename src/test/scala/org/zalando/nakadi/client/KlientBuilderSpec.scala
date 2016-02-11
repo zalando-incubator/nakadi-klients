@@ -47,8 +47,14 @@ class KlientBuilderSpec extends WordSpec with Matchers {
       }
     }
 
-    // hmm.. ObjectMapper is about the Jackson JSON conversions, right?
-    // Would you like to see how spray-json does it? It's just one of Scala JSON libraries, but pretty "magical". :)
+    // tbd. @Benjamin will provide more info on the Java use pattern. Maybe we can craft more detailed tests, based
+    //      on it here. AKa110216
+    //
+    // Qs:
+    //    - if nakadi-klients is about subscribing to messages, why would the customer component be giving its ObjectMapper
+    //      to read such events?
+    //    - Wouldn't it make sense to provide type safe interfaces for reading such (Zalando) events? (or is this because
+    //      we're open source here, but actual use case is Zalando events?)
 
     "use the specified ObjectMapper" in {
 
@@ -57,10 +63,10 @@ class KlientBuilderSpec extends WordSpec with Matchers {
       val klient: KlientImpl = KlientBuilder()
         .withEndpoint(new URI("localhost:8080"))
         .withTokenProvider(() => "my-token")
-        .withObjectMapper(Some(objectMapper))
+        //.withObjectMapper(Some(objectMapper))   // tbd. uncomment
         .build().asInstanceOf[KlientImpl]
 
-      klient.objectMapper == objectMapper should be(true)   // what is this actually testing?
+      //klient.objectMapper == objectMapper should be(true)   // what is this actually testing?
     }
   }
 }

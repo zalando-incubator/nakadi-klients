@@ -29,8 +29,9 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.4.1",
   "com.google.guava" % "guava" % "19.0",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
-  "com.fasterxml.jackson.core" % "jackson-core" % "2.7.0",
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.3",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.7.0",      // needed for Java interface (ObjectMapper)
+  //"com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.3",
+  "io.spray" %%  "spray-json" % "1.3.2",
   "ch.qos.logback" % "logback-classic" % "1.1.3",
   "com.typesafe.akka" %% "akka-http-experimental" % "2.0.2",
   "de.zalando.scoop" % "scoop" % "0.1.0-SNAPSHOT",

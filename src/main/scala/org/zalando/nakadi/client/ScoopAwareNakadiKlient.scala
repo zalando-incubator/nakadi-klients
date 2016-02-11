@@ -3,7 +3,6 @@ package org.zalando.nakadi.client
 import java.net.URI
 
 import akka.actor.ActorSystem
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.typesafe.config.ConfigFactory
 import de.zalando.scoop.{ScoopClient, Scoop}
 import org.zalando.nakadi.client.actor.KlientSupervisor.{NewScoopAwareSubscription, NewSubscription}
@@ -26,14 +25,12 @@ class ScoopAwareNakadiKlient(endpoint: URI,
                              port: Int,
                              securedConnection: Boolean,
                              tokenProvider: () => String,
-                             objectMapper: ObjectMapper,
                              scoopOption: Option[Scoop],
                              scoopTopicOption: Option[String])
   extends KlientImpl(endpoint,
                      port,
                      securedConnection,
                      tokenProvider,
-                     objectMapper,
                      ScoopAwareNakadiKlient.initActorSystem(scoopOption)) {
 
   val scoopTopic = scoopTopicOption.getOrElse(throw new IllegalArgumentException("no Scoop topic specified"))

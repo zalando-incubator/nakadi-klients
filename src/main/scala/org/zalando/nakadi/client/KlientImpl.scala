@@ -10,33 +10,32 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.unmarshalling.{PredefinedFromEntityUnmarshallers, Unmarshaller}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import org.zalando.nakadi.client.Klient.KlientException
 import org.zalando.nakadi.client.Utils.outgoingHttpConnection
 import org.zalando.nakadi.client.actor.KlientSupervisor._
 import org.zalando.nakadi.client.actor._
+import scala.collection.immutable.List
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Success, Failure}
 
+import MyJsonProtocol._
+import spray.json._
 
 protected class KlientImpl(val endpoint: URI,
                            val port: Int,
                            val securedConnection: Boolean,
                            val tokenProvider: () => String,
-                           val objectMapper: ObjectMapper,
                            val klientSystem: Option[ActorSystem] = None) extends Klient{
   checkNotNull(endpoint, "endpoint must not be null")
   checkNotNull(tokenProvider, "tokenProvider must not be null")
-  checkNotNull(objectMapper, "objectMapper must not be null")
 
   implicit val system = klientSystem.getOrElse(ActorSystem("nakadi-client"))
 
-  val supervisor = system.actorOf(KlientSupervisor.props(endpoint, port, securedConnection, tokenProvider, objectMapper),
+  val supervisor = system.actorOf(KlientSupervisor.props(endpoint, port, securedConnection, tokenProvider),
                                   "klient-supervisor")
 
   implicit val materializer = ActorMaterializer()
@@ -54,8 +53,12 @@ protected class KlientImpl(val endpoint: URI,
    *
    * @return immutable map of metrics data (value can be another Map again)
    */
-  override def getMetrics: Future[Either[String, Map[String, Any]]] =
-                                            performDefaultGetRequest(URI_METRICS, new TypeReference[Map[String, Any]]{})
+  override def getMetrics: Future[Either[String, Map[String, Any]]] = {
+    import tools.AnyJsonFormat._
+    import DefaultJsonProtocol._
+
+    performDefaultGetRequest[Map[String, Any]](URI_METRICS)
+  }
 
 
   /**
@@ -66,11 +69,11 @@ protected class KlientImpl(val endpoint: URI,
    */
   override def getPartitions(topic: String): Future[Either[String, List[TopicPartition]]] = {
     checkNotNull(topic, "topic must not be null")
-    performDefaultGetRequest(String.format(URI_PARTITIONS,topic), new TypeReference[List[TopicPartition]]{})
+    performDefaultGetRequest[List[TopicPartition]](String.format(URI_PARTITIONS,topic))
   }
 
 
-  private def performDefaultGetRequest[T](uriPart: String, expectedType: TypeReference[T]): Future[Either[String, T]] = {
+  private def performDefaultGetRequest[T](uriPart: String)(implicit exists: JsonReader[T]): Future[Either[String, T]] = {
     val request = HttpRequest(uri = uriPart)
                   .withHeaders(headers.Authorization(OAuth2BearerToken(tokenProvider.apply())),
                                headers.Accept(MediaRange(`application/json`)))
@@ -81,21 +84,22 @@ protected class KlientImpl(val endpoint: URI,
       .single(request)
       .via(outgoingHttpConnection(endpoint, port, securedConnection))
       .runWith(Sink.head)
-      .map(evaluateResponse(_, expectedType))
+      .map(evaluateResponse[T](_))
   }
 
 
-
-  private def evaluateResponse[T](response: HttpResponse, expectedType: TypeReference[T]) :Either[String,T] = {
+  private def evaluateResponse[T](response: HttpResponse)(implicit exists: JsonReader[T]) :Either[String,T] = {
     logger.debug("received [response={}]", response)
 
     if(response.status.intValue() < 200 || response.status.intValue() > 299)
       Left(response.status + " - " + response.entity)
     else
     // TODO better way?
+    // @Benjamin: What do you mean in particular - how a better way? AKa100216
       Await.result(
-        Unmarshaller.byteArrayUnmarshaller(response.entity).map(bytes => {
-          Right(objectMapper.readValue[T](bytes, expectedType))
+        Unmarshaller.byteArrayUnmarshaller(response.entity).map( bytes => {
+          val tmp = JsonParser(bytes).convertTo[T]
+          Right(tmp)
         }), Duration.Inf)
 
   }
@@ -111,7 +115,7 @@ protected class KlientImpl(val endpoint: URI,
   override def getPartition(topic: String, partitionId: String): Future[Either[String, TopicPartition]] = {
     checkNotNull(topic, "topic must not be null")
     checkNotNull(partitionId, "partitionId must not be null")
-    performDefaultGetRequest(String.format(URI_PARTITION, topic, partitionId), new TypeReference[TopicPartition]{})
+    performDefaultGetRequest[TopicPartition](String.format(URI_PARTITION, topic, partitionId))
   }
 
 
@@ -120,7 +124,7 @@ protected class KlientImpl(val endpoint: URI,
    *
    * @return immutable list of known topics
    */
-  def getTopics: Future[Either[String, List[Topic]]] = performDefaultGetRequest(URI_TOPICS, new TypeReference[List[Topic]]{})
+  def getTopics: Future[Either[String, List[Topic]]] = performDefaultGetRequest[List[Topic]](URI_TOPICS)
 
 
   /**
@@ -181,7 +185,11 @@ protected class KlientImpl(val endpoint: URI,
    * Post a single event to the given topic.  Partition selection is done using the defined partition resolution.
    * The partition resolution strategy is defined per topic and is managed by event store (currently resolved from
    * hash over Event.orderingKey).
+<<<<<<< HEAD
+   *
+=======
  *
+>>>>>>> zalando/experimental
    * @param topic  target topic
    * @param event  event to be posted
    * @return Option representing the error message or None in case of success
@@ -197,7 +205,7 @@ protected class KlientImpl(val endpoint: URI,
 
     val request = HttpRequest(uri = uriPart, method = POST)
                   .withHeaders(headers.Authorization(OAuth2BearerToken(tokenProvider.apply())))
-                  .withEntity(ContentType(`application/json`), objectMapper.writeValueAsBytes(event))
+                  .withEntity(ContentType(`application/json`), event.toJson.toString)
 
     logger.debug("sending [request={}]", request)
 

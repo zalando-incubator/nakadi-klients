@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor._
 import akka.util.Timeout
-import com.fasterxml.jackson.databind.ObjectMapper
 import de.zalando.scoop.ScoopClient
 import org.zalando.nakadi.client.Klient.KlientException
 import org.zalando.nakadi.client.actor.PartitionReceiver._
@@ -34,12 +33,12 @@ object KlientSupervisor{
 
   case class Unsubscription(topic: String, listener: Listener)
 
-  def props(endpoint: URI, port: Int, securedConnection: Boolean, tokenProvider: () => String, objectMapper: ObjectMapper) =
-                                           Props(new KlientSupervisor(endpoint, port, securedConnection, tokenProvider, objectMapper))
+  def props(endpoint: URI, port: Int, securedConnection: Boolean, tokenProvider: () => String) =
+                                           Props(new KlientSupervisor(endpoint, port, securedConnection, tokenProvider))
 }
 
 
-class KlientSupervisor private (val endpoint: URI, val port: Int, val securedConnection: Boolean, val tokenProvider: () => String, val objectMapper: ObjectMapper)
+class KlientSupervisor private (val endpoint: URI, val port: Int, val securedConnection: Boolean, val tokenProvider: () => String)
   extends Actor with ActorLogging{
 
   import akka.actor.SupervisorStrategy._
@@ -104,8 +103,7 @@ class KlientSupervisor private (val endpoint: URI, val port: Int, val securedCon
                                                                       partitionId,
                                                                       parameters,
                                                                       tokenProvider,
-                                                                      autoReconnect,
-                                                                      objectMapper),
+                                                                      autoReconnect),
                                                                       actorName)
       case None => context.actorOf(PartitionReceiver.props( endpoint,
                                                             port,
@@ -114,8 +112,7 @@ class KlientSupervisor private (val endpoint: URI, val port: Int, val securedCon
                                                             partitionId,
                                                             parameters,
                                                             tokenProvider,
-                                                            autoReconnect,
-                                                            objectMapper))
+                                                            autoReconnect))
     }
 
     val lActor = listenerMap.get(listener.id) match {
