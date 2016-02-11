@@ -119,3 +119,7 @@ trait Klient {
    */
   def stop(): Future[Terminated]
 }
+
+object Klient {
+  class KlientException(message: String, cause: Throwable = null) extends RuntimeException(message, cause)
+}

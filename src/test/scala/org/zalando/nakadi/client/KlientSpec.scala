@@ -9,10 +9,11 @@ import com.typesafe.scalalogging.LazyLogging
 import io.undertow.util.{HeaderValues, HttpString, Headers}
 import org.scalatest.concurrent.PatienceConfiguration.{Timeout => ScalaTestTimeout}
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest._
 import org.zalando.nakadi.client.actor.PartitionReceiver
 import org.zalando.nakadi.client.utils.NakadiTestService
 import org.zalando.nakadi.client.utils.NakadiTestService.Builder
+import org.zalando.nakadi.client.utils.{Request => NakadiRequest}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -23,38 +24,11 @@ import spray.json._
 import org.zalando.nakadi.client.tools.AnyJsonFormat._
 import MyJsonProtocol._
 
-class TestListener extends  Listener {
-  var receivedEvents = new AtomicReference[List[Event]](List[Event]())
-  var onConnectionClosed = 0
-  var onConnectionOpened = 0
-  var onConnectionFailed = 0
-
-  override def id = "test"
-
-  override def onReceive(topic: String, partition: String, cursor: Cursor, event: Event): Unit =  {
-    println(s"WAS CALLED [topic=$topic, partition=$partition, event=$event]" )
-
-    var old = List[Event]()
-    do {
-      old = receivedEvents.get()
-    }
-    while(! receivedEvents.compareAndSet(old, old ++ List(event)))
-  }
-  override def onConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor]): Unit = onConnectionClosed += 1
-  override def onConnectionOpened(topic: String, partition: String): Unit = onConnectionOpened += 1
-  override def onConnectionFailed(topic: String, partition: String, status: Int, error: String): Unit = onConnectionFailed += 1
-}
-
-
 class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with LazyLogging with ScalaFutures {
+  import KlientSpec._
 
   var klient: Klient = null
   var service: NakadiTestService = null
-
-  val MEDIA_TYPE = "application/json"
-  val TOKEN = "<OAUTH Token>"
-  val HOST = "localhost"
-  val PORT = 8081
 
   override  def beforeEach() = {
     klient = KlientBuilder()
@@ -66,6 +40,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
   override def afterEach(): Unit = {
     klient.stop()
+    klient = null
 
     if(Option(service).isDefined) {
       service.stop()
@@ -73,48 +48,26 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
     }
   }
 
-  private def performStandardRequestChecks(expectedRequestPath: String, expectedRequestMethod: HttpString) = {
+  private def performStandardRequestChecks(expectedRequestPath: String, expectedRequestMethod: HttpString): NakadiRequest = {
     val collectedRequestsMap = service.getCollectedRequests
     val requests = collectedRequestsMap.get(expectedRequestPath)
     requests should not be null
 
     val request = Iterators.getLast(requests.iterator)
-    request.getRequestPath should be(expectedRequestPath)
-    request.getRequestMethod should be(expectedRequestMethod)
+    request.getRequestPath shouldBe expectedRequestPath
+    request.getRequestMethod shouldBe expectedRequestMethod
 
     val headerMap = request.getRequestHeaders
 
-    var headerValues: HeaderValues = null
-
     if(request.getRequestMethod.equals(new HttpString("GET"))){
-      headerValues= headerMap.get(Headers.ACCEPT)
-      val mediaType= headerValues.getFirst
-      mediaType should be(MEDIA_TYPE)
-    }
-    else {
-      headerValues= headerMap.get(Headers.CONTENT_TYPE)
-      val mediaType= headerValues.getFirst
-      mediaType should be(MEDIA_TYPE)
+      headerMap.get(Headers.ACCEPT).getFirst shouldBe MEDIA_TYPE
+    } else {
+      headerMap.get(Headers.CONTENT_TYPE).getFirst shouldBe MEDIA_TYPE
     }
 
-
-    headerValues = headerMap.get(Headers.AUTHORIZATION)
-    val authorizationHeaderValue = headerValues.getFirst
-    authorizationHeaderValue should be(s"Bearer $TOKEN")
+    headerMap.get(Headers.AUTHORIZATION).getFirst shouldBe s"Bearer $TOKEN"
 
     request
-  }
-
-  private def checkQueryParameter(queryParameters: java.util.Map[String, util.Deque[String]], paramaterName: String, expectedValue: String) {
-    val paramDeque = queryParameters.get(paramaterName)
-    paramDeque should not be null
-    paramDeque.getFirst should be(expectedValue)
-  }
-
-  // 'whenReady' requires the timeout in its own special way. Note: move this to companion object, later. AKa280116
-  //
-  implicit def conv(x: FiniteDuration): ScalaTestTimeout = {
-    new ScalaTestTimeout(x)
   }
 
   "A Klient" must {
@@ -186,7 +139,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
         case Left(error) => fail(s"could not retrieve topics: $error")
         case Right(topics) =>
           logger.info(s"topics => $topics")
-          topics should be(expectedResponse)
+          topics shouldBe expectedResponse
           performStandardRequestChecks(requestPath, requestMethod)
 
       }
@@ -206,7 +159,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
       val requestPath = s"/topics/$topic/events"
       val responseStatusCode = 201
 
-      val builder = new NakadiTestService.Builder
+      val builder = new Builder
       service = builder.withHost(HOST)
                        .withPort(PORT)
                        .withHandler(requestPath)
@@ -222,9 +175,11 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
         case Right(_) => logger.debug("event post request was successful")
       }
 
+      // Not exactly clear to me what's happening here; how the 'objectMapper' is connected...? AKa280116
+
       val request = performStandardRequestChecks(requestPath, requestMethod)
       val sentEvent = JsonParser(request.getRequestBody).convertTo[Event]
-      sentEvent should be(event)
+      sentEvent shouldBe event
     }
 
     "retreive partitions of a topic" in {
@@ -253,7 +208,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
         case Left(error: String) => throw new RuntimeException(s"could not retrieve partitions: $error")
         case Right(partitions) => partitions
       }
-      receivedPartitions should be(expectedPartitions)
+      receivedPartitions shouldBe expectedPartitions
       performStandardRequestChecks(requestPath, requestMethod)
     }
 
@@ -282,7 +237,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
         case Left(error)  => throw new RuntimeException(s"could not retrieve partition: $error")
         case Right(receivedTopic) => receivedTopic
       }
-      receivedPartition should be(expectedPartition)
+      receivedPartition shouldBe expectedPartition
 
       performStandardRequestChecks(requestPath, requestMethod)
     }
@@ -363,17 +318,19 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
       receivedEvents should contain(event2)
 
       listener.onConnectionOpened should be > 0
-      listener.onConnectionClosed should be > 0 // no long polling actitvated by test mock
+      listener.onConnectionClosed should be > 0 // no long polling activated by test mock
 
 
       val collectedRequests = service.getCollectedRequests
-      collectedRequests should have size 3
+      collectedRequests.size shouldBe 3
 
       //-- check header and query parameters
 
       performStandardRequestChecks(partitionsRequestPath, httpMethod)
 
       val request = performStandardRequestChecks(partition1EventsRequestPath, httpMethod)
+
+      // Q: what is the purpose of this logic?
 
       if(request.getRequestPath.contains(partition1EventsRequestPath)) {
         var queryParameters = request.getRequestQueryParameters
@@ -481,7 +438,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
       Thread.sleep(1000L)
 
-      receivedEvents should be(listener.receivedEvents)
+      receivedEvents shouldBe listener.receivedEvents
     }
   }
 
@@ -527,4 +484,53 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
       .build
     service.start()
   }
+}
+
+object KlientSpec extends WordSpecLike /*info*/ with ShouldMatchers {
+
+  /*** tbd. Must get this back AKa110216
+  lazy val objectMapper = new ObjectMapper()
+    .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+    .setPropertyNamingStrategy(PropertyNamingStrategy.CAMEL_CASE_TO_LOWER_CASE_WITH_UNDERSCORES)
+    .registerModule(new DefaultScalaModule)
+  ***/
+
+  val MEDIA_TYPE = "application/json"
+  val TOKEN = "<OAUTH Token>"
+  val HOST = "localhost"
+  val PORT = 8081
+
+  private
+  class TestListener extends Listener {
+    var receivedEvents = new AtomicReference[List[Event]](List())
+    var onConnectionClosed, onConnectionOpened, onConnectionFailed = 0
+
+    override def id = "test"
+
+    override def onReceive(topic: String, partition: String, cursor: Cursor, event: Event): Unit = {
+
+      var old = List[Event]()
+      do {
+        old = receivedEvents.get()
+      }
+      while (!receivedEvents.compareAndSet(old, old ++ List(event)))    // Q: what is this doing? AKa280116
+    }
+
+    override def onConnectionClosed(topic: String, partition: String, lastCursor: Option[Cursor]): Unit = onConnectionClosed += 1
+
+    override def onConnectionOpened(topic: String, partition: String): Unit = onConnectionOpened += 1
+
+    override def onConnectionFailed(topic: String, partition: String, status: Int, error: String): Unit = onConnectionFailed += 1
+  }
+
+  private
+  def checkQueryParameter(queryParameters: java.util.Map[String, util.Deque[String]], paramaterName: String, expectedValue: String) {
+    val paramDeque = queryParameters.get(paramaterName)
+    paramDeque should not be null
+    paramDeque.getFirst shouldBe expectedValue
+  }
+
+  private
+  implicit def conv(x: FiniteDuration): ScalaTestTimeout = { new ScalaTestTimeout(x) }
 }
