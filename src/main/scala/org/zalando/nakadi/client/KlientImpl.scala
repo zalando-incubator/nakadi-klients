@@ -34,7 +34,7 @@ protected class KlientImpl(val endpoint: URI,
 
   implicit val system = klientSystem.getOrElse(ActorSystem("nakadi-client"))
 
-  val supervisor = system.actorOf(KlientSupervisor.props(endpoint, port, securedConnection, tokenProvider/*, objectMapper*/),
+  val supervisor = system.actorOf(KlientSupervisor.props(endpoint, port, securedConnection, tokenProvider),
                                   "klient-supervisor")
 
   implicit val materializer = ActorMaterializer()
@@ -184,8 +184,8 @@ protected class KlientImpl(val endpoint: URI,
    * Post a single event to the given topic.  Partition selection is done using the defined partition resolution.
    * The partition resolution strategy is defined per topic and is managed by event store (currently resolved from
    * hash over Event.orderingKey).
-     *
-     * @param topic  target topic
+   *
+   * @param topic  target topic
    * @param event  event to be posted
    * @return Option representing the error message or None in case of success
    */
@@ -200,7 +200,7 @@ protected class KlientImpl(val endpoint: URI,
 
     val request = HttpRequest(uri = uriPart, method = POST)
                   .withHeaders(headers.Authorization(OAuth2BearerToken(tokenProvider.apply())))
-                  .withEntity(ContentType(`application/json`), event.toJson.toString /*objectMapper.writeValueAsBytes(event)*/)
+                  .withEntity(ContentType(`application/json`), event.toJson.toString)
 
     logger.debug("sending [request={}]", request)
 

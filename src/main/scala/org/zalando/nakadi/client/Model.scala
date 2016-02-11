@@ -1,7 +1,7 @@
 package org.zalando.nakadi.client
 
 import scala.collection.JavaConversions
-import spray.json.{JsValue, JsonFormat, DefaultJsonProtocol}
+import spray.json.DefaultJsonProtocol
 
 case class Cursor(partition: String, offset: String)
 
@@ -21,19 +21,10 @@ case class SimpleStreamEvent(cursor: Cursor, events: List[Event], topology: List
 object MyJsonProtocol extends DefaultJsonProtocol {
   import tools.AnyJsonFormat._
 
-  /*** remove
-  implicit object FmtAnyRef extends JsonFormat[AnyRef] {
-    override
-    def read(x:JsValue) = throw new RuntimeException( s"Not ready to read JSON->AnyRef: $x")
-
-    override
-    def write(x:AnyRef) = throw new RuntimeException( s"Not ready to write AnyRef->JSON: $x")
-  } ***/
-
-  implicit private val fmtCursor = jsonFormat2(Cursor)
-  implicit val fmtEvent = jsonFormat4(Event)    // needs the above AnyRef conversions
+  implicit private val fmtCursor = jsonFormat2(Cursor)                // needed by 'SimpleStreamEvent' conversion
+  implicit val fmtEvent = jsonFormat4(Event)
   implicit val fmtTopic = jsonFormat1(Topic)
-  implicit private val fmtTopologyItem = jsonFormat2(TopologyItem)    // needed by the 'SimpleStreamEvent' conversion below
+  implicit private val fmtTopologyItem = jsonFormat2(TopologyItem)    // needed by 'SimpleStreamEvent' conversion
   implicit val fmtTopicPartition = jsonFormat3(TopicPartition)
   implicit val fmtSimpleStreamEvent = jsonFormat3(SimpleStreamEvent)
 }

@@ -11,19 +11,16 @@ import org.scalatest.concurrent.PatienceConfiguration.{Timeout => ScalaTestTimeo
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import org.zalando.nakadi.client.actor.PartitionReceiver
-import org.zalando.nakadi.client.tools.AnyJsonFormat
 import org.zalando.nakadi.client.utils.NakadiTestService
 import org.zalando.nakadi.client.utils.NakadiTestService.Builder
-import spray.json.{JsonParser, JsValue, JsObject}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.language.implicitConversions
 
-import org.zalando.nakadi.client.tools.AnyJsonFormat._
 import spray.json._
-import DefaultJsonProtocol._
+import org.zalando.nakadi.client.tools.AnyJsonFormat._
 import MyJsonProtocol._
 
 class TestListener extends  Listener {
@@ -122,7 +119,6 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
 
   "A Klient" must {
     "retrieve Nakadi metrics" in {
-      import AnyJsonFormat._
       import DefaultJsonProtocol._
 
       val expectedResponse = Map(
@@ -227,7 +223,7 @@ class KlientSpec extends WordSpec with Matchers with BeforeAndAfterEach with Laz
       }
 
       val request = performStandardRequestChecks(requestPath, requestMethod)
-      val sentEvent = JsonParser(request.getRequestBody).convertTo[Event]   //objectMapper.readValue(request.getRequestBody, classOf[Event])
+      val sentEvent = JsonParser(request.getRequestBody).convertTo[Event]
       sentEvent should be(event)
     }
 
