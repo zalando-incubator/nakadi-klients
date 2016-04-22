@@ -1,0 +1,214 @@
+[
+    {
+        "name": "article",
+        "owning_application": "article-producer",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "myarticle",
+        "owning_application": "article-producer",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "yourarticle",
+        "owning_application": "article-producer",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "blah",
+        "owning_application": "article-producer",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "slavaTest",
+        "owning_application": "article-producer",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "slavaTest2",
+        "owning_application": "article-producer",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "asf_overarch_service_sql_v1_testing",
+        "owning_application": "aws-asf-service-api",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\":{\"properties\": {\"sql\": { \"type\": \"array\", \"minItems\": 0, \"items\": { \"type\": \"string\" }}, \"csku\": { \"type\": \"string\" }, \"request_id\": { \"type\": \"string\" }, \"csku_index\": { \"type\": \"integer\" }, \"scenario\": { \"type\": \"string\" }, \"max_index\": { \"type\": \"integer\" }}}}"
+        }
+    },
+    {
+        "name": "buffalo-test-topic",
+        "owning_application": "buffalo-reactive-nakadi",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "eventlog.e1006_default_invoice_address_changed",
+        "owning_application": "eventlog",
+        "category": "business",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [
+            "metadata.eid"
+        ],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"additionalProperties\": true}"
+        }
+    },
+    {
+        "name": "reactive-nakadi-testing-uppercase",
+        "owning_application": "buffalo",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events"
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"type\": \"object\", \"properties\": {\"FOO\": {\"type\": \"string\"}}, \"required\": [\"foo\"]}"
+        }
+    },
+    {
+        "name": "test.ORDER_RECEIVED",
+        "owning_application": "laas-team",
+        "category": "business",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events"
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{ \"properties\": { \"order_number\": { \"type\": \"string\" } } }"
+        }
+    },
+    {
+        "name": "di-sfc",
+        "owning_application": "di-sfc-nakadi",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sql\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "ORDER_CREATED",
+        "owning_application": "sales-order-service",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{ \"order\": { \"properties\": { \"order_number\": { \"type\": \"string\" }}}}"
+        }
+    },
+    {
+        "name": "buffalo-test-topic-uppercase",
+        "owning_application": "buffalo-reactive-nakadi",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\": { \"properties\": { \"sku\": { \"type\": \"string\" } } }}"
+        }
+    },
+    {
+        "name": "5fade51a-9db0-452f-8e5f-203659f2a2e3",
+        "owning_application": "di-sfc-nakadi",
+        "category": "data",
+        "partition_strategy": {
+            "name": "random",
+            "doc": "This strategy will put the event to a random partition. Use it only if your `EventType` has one partition or if you don't care about ordering of events."
+        },
+        "partition_key_fields": [],
+        "schema": {
+            "type": "json_schema",
+            "schema": "{\"Article\":{\"properties\": {\"sql\": { \"type\": \"array\", \"minItems\": 0, \"items\": { \"type\": \"string\" }}, \"csku\": { \"type\": \"string\" }}}}"
+        }
+    }
+]
