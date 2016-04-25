@@ -19,7 +19,7 @@ public class Main {
                         .withEndpoint(new URI("localhost"))
                         .withPort(8080)                         // test config?
                         .withSecuredConnection(false)
-                        .withJavaTokenProvider(() -> "b099a178-acf7-467b-b106-4c0656285153")
+                        .withJavaTokenProvider(() -> "<your token>")
                         .buildJavaClient();
 
         System.out.println("-METRICS--> " + client.getMetrics().get());
