@@ -65,16 +65,17 @@ class KlientSupervisor private (val endpoint: URI, val port: Int, val securedCon
       listenerMap = listenerMap.filterNot(_._2 == actor)
   }
 
+  private def topicPartitionActorName(topic: String, partitionId:String) = s"$topic-$partitionId"
 
   def subscribe(topic: String, partitionId: String, parameters: ListenParameters, autoReconnect: Boolean, listener: Listener, createListenerActor: (Listener) => ActorRef): Unit = {
     if(autoReconnect) {
-      resolveActor("partition-" + partitionId).onComplete(_ match {
+      resolveActor(topicPartitionActorName(topic, partitionId)).onComplete {
         case Success(receiverActor) =>
           receiverActor ! NewListener(listener.id, createListenerActor(listener))
         case Failure(e: ActorNotFound) =>
-          subscribeToPartition(topic, partitionId, parameters, autoReconnect, listener, Some(s"partition-$partitionId"),createListenerActor)
+          subscribeToPartition(topic, partitionId, parameters, autoReconnect, listener, Some(topicPartitionActorName(topic, partitionId)), createListenerActor)
         case Failure(e: Throwable) => throw new KlientException(e.getMessage, e)
-      })
+      }
     }
     else subscribeToPartition(topic, partitionId, parameters, autoReconnect, listener, None, createListenerActor)
   }

@@ -45,3 +45,9 @@ libraryDependencies ++= Seq(
 )
 
 git.baseVersion := "0.0.0"
+
+version := "1.0"
+
+publishMavenStyle := true
+
+publishTo := Some(Resolver.file("file",  new File(Path.userHome.absolutePath+"/.m2/repository")))
