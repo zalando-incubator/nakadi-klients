@@ -59,14 +59,19 @@ class SubscriptionHandlerImpl(val connection: Connection) extends SubscriptionHa
 
   val logger = LoggerFactory.getLogger(this.getClass)
 
+
+
+
   def subscribe(eventTypeName: String, endpoint: String, cursor: Option[Cursor], eventHandler: EventHandler) = {
     supervisingActor ! SubscribeMsg(eventTypeName, endpoint, cursor, eventHandler)
     None
   }
+
   def unsubscribe(eventTypeName: String, partition: Option[String], listenerId: String) = {
     supervisingActor ! UnsubscribeMsg(eventTypeName, partition, listenerId)
     None
   }
+
 
   def decider(): Supervision.Decider = {
     case _ => Supervision.Stop

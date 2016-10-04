@@ -91,7 +91,7 @@ class JavaClientHandlerImpl(val connection: Connection, subscriber: Subscription
              des: Deserializer[T]): java.util.concurrent.Future[Optional[T]] = {
     FutureConversions.fromFuture2Future(
       connection
-        .executeCall(withHttpRequest(endpoint, HttpMethods.GET, headers, connection.tokenProvider, None))
+        .executeCall(withHttpRequest(endpoint, HttpMethods.GET, headers, connection.tokenProvider, Map()))
         .flatMap(deserialize(_, des)))
   }
   def post[T](endpoint: String, model: T)(implicit serializer: Serializer[T]): java.util.concurrent.Future[Void] = {
@@ -147,7 +147,7 @@ class JavaClientHandlerImpl(val connection: Connection, subscriber: Subscription
     import ModelConverter._
     val params: Option[ScalaStreamParameters] = toScalaStreamParameters(parameters)
     val eventHandler: EventHandler = new JavaEventHandlerImpl(des, listener)
-    val finalUrl = withUrl(endpoint, params)
+    val finalUrl = withUrl(endpoint, Map()) //params) // FIXME !!!
     val res = subscriber.subscribe(eventTypeName, finalUrl, getCursor(params), eventHandler)
     toJavaClientError(res)
   }

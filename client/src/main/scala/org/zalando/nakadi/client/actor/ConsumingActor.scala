@@ -40,6 +40,7 @@ class ConsumingActor(subscription: SubscriptionKey, handler: EventHandler)
     with ActorSubscriber {
   import ModelConverter._
 
+  val subscriptionAsString = subscription.toString()
   var lastCursor: Option[Cursor] = null
 
   override protected def requestStrategy: RequestStrategy =
@@ -52,8 +53,8 @@ class ConsumingActor(subscription: SubscriptionKey, handler: EventHandler)
   override def receive: Receive = {
     case OnNext(msg: ByteString) =>
       val message = msg.utf8String
-      log.debug("Event - prevCursor [{}] - [{}] - msg [{}]", lastCursor, subscription, message)
-      handler.handleOnReceive(subscription.toString(), message) match {
+      log.debug("Event - prevCursor [{}] - [{}] - msg [{}]", lastCursor, subscriptionAsString, message)
+      handler.handleOnReceive(subscriptionAsString, message) match {
         case Right(cursor) =>
           lastCursor = Some(cursor)
           context.parent ! OffsetMsg(cursor, subscription)
@@ -65,10 +66,11 @@ class ConsumingActor(subscription: SubscriptionKey, handler: EventHandler)
       log.error("onError - cursor [{}] - [{}] - error [{}]", lastCursor, subscription, err.getMessage)
       context.stop(self)
     case OnComplete =>
-      log.info("onComplete - connection closed by server - cursor [{}] - [{}]", lastCursor, subscription)
+      log.debug("onComplete - connection closed by server - cursor [{}] - [{}]", lastCursor, subscription)
       context.parent ! UnsubscribeMsg(subscription.eventTypeName, subscription.partition, handler.id())
     case a =>
-      log.error("Could not handle unknown msg: [{}] - subscription [{}] with listener-id [{}] ", a, subscription, handler.id())
+      log.error("Could not handle unknown msg: [{}] - subscription [{}] with listener-id [{}] ",
+                a, subscriptionAsString, handler.id())
       context.stop(self)
   }
 

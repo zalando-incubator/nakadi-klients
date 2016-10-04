@@ -1,0 +1,16 @@
+{
+  "name":"de.zalando.logistics.laas.hecate.test.process_status_changed",
+  "owning_application":"hecate",
+  "category":"business",
+  "partition_strategy":"hash",
+  "partition_key_fields":[
+    "process_instance"
+  ],
+  "enrichment_strategies":[
+    "metadata_enrichment"
+  ],
+  "schema":{
+    "type":"json_schema",
+    "schema":"{ \"properties\": {\"process_instance\": { \"type\": \"string\" },\"subject\": { \"type\": \"string\" },\"status\": { \"type\": \"string\" },\"subject_metadata\": { \"type\": \"object\" } }}}"
+  }
+}

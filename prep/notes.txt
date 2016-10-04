@@ -1,0 +1,5 @@
+Nakadi client does not reconnect (because closed connection appears to be ok)
+
+http PUT https://nakadi-sandbox.aruha-test.zalan.do/subscriptions/484cfdd9-fee9-4ec6-b1c6-9fcaebb8e322/cursors "Authorization: Bearer $(zign token)" @commit_cursor.json
+
+

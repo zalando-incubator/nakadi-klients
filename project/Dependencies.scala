@@ -43,7 +43,11 @@ object Dependencies {
 			"org.scalatest"                     %% "scalatest"               						% scalaTestVersion,
 			"commons-lang" 											% "commons-lang" 												% "2.6",
 			"org.zalando"                       % "jackson-datatype-money"              % "0.6.0",
-			"junit"                             % "junit"                   						% junitVersion       % "test"
+			"junit"                             % "junit"                   						% junitVersion       % "test",
+			"org.slf4j" 									 % "slf4j-api" 												  % "1.7.21",
+			"com.typesafe.akka"            % "akka-slf4j_2.11"                    % "2.4.7",
+			"ch.qos.logback"               % "logback-classic"         						% "1.1.7"  % "test",
+			"ch.qos.logback"               % "logback-core"         						  % "1.1.7"  % "test"
 		)
 	}
 }

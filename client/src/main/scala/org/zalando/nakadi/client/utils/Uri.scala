@@ -27,4 +27,13 @@ object Uri {
     "/registry/enrichment-strategies"
   final def URI_PARTITIONING_STRATEGIES =
     "/registry/partition-strategies"
+
+  /*High Level API*/
+  final def URI_SUBSCRIPTION_TO_EVENT_STREAM(subscriptionId: String) =
+    s"/subscriptions/$subscriptionId/events"
+
+  val URI_SUBSCRIPTION = "/subscriptions/"
+
+  final def URI_SUBSCRIPTION_CURSOR_COMMIT(subscriptionId: String) =
+    s"/subscriptions/$subscriptionId/cursors"
 }

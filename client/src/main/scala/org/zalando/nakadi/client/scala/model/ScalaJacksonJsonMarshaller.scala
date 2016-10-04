@@ -57,6 +57,9 @@ object ScalaJacksonJsonMarshaller {
   implicit def dataChangeEventTR: TypeReference[DataChangeEvent[Any]] =
     new TypeReference[DataChangeEvent[Any]] {}
 
+  implicit def subscriptionTR: TypeReference[Subscription] =
+    new TypeReference[Subscription] {}
+
   //Lists
   implicit def listOfPartitionStrategyTR: TypeReference[Seq[PartitionStrategy.Value]] =
     new TypeReference[Seq[PartitionStrategy.Value]] {}

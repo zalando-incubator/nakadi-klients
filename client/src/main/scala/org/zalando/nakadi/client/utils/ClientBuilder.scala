@@ -6,7 +6,10 @@ import org.zalando.nakadi.client.java.{ClientImpl => JClientImpl}
 import org.zalando.nakadi.client.scala.ClientImpl
 import org.zalando.nakadi.client.scala.Connection
 import java.util.function.Supplier
+
 import com.google.common.base.Preconditions._
+
+import scala.util.Properties
 
 object ClientBuilder {
 
@@ -18,7 +21,13 @@ object ClientBuilder {
     new ClientBuilder(host, port, tokenProvider, securedConnection, verifySSlCertificate)
 
   private val DEFAULT_PORT = 443
+
+  val ENV_NAKADI_HOST = "NAKADI_HOST"
+  val ENV_NAKADI_PORT = "NAKADI_PORT"
+  val ENV_OAUTH2_TOKEN = "OAUTH2_TOKEN"
 }
+
+
 
 class ClientBuilder private (host: String = null, //
                              port: Int, //
@@ -26,7 +35,14 @@ class ClientBuilder private (host: String = null, //
                              securedConnection: Boolean = true, //
                              verifySSlCertificate: Boolean = true) {
   def this() =
-    this(null, ClientBuilder.DEFAULT_PORT, None, true, true)
+    this(
+      Properties.envOrElse(ClientBuilder.ENV_NAKADI_HOST, null),
+      Properties.envOrElse(ClientBuilder.ENV_NAKADI_PORT, ClientBuilder.DEFAULT_PORT.toString).toInt,
+      Properties.envOrNone(ClientBuilder.ENV_OAUTH2_TOKEN) map {token =>  () => token },
+      true,
+      true
+    )
+
   def withHost(host: String): ClientBuilder =
     new ClientBuilder(checkNotNull(host), port, tokenProvider, securedConnection, verifySSlCertificate)
 

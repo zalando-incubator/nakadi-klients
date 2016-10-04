@@ -1,5 +1,7 @@
 package org.zalando.nakadi.client.scala
 
+import java.util.UUID
+
 import scala.Left
 import scala.Right
 import scala.concurrent.Await
@@ -7,29 +9,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.DurationInt
-
 import org.slf4j.LoggerFactory
 import org.zalando.nakadi.client.Deserializer
 import org.zalando.nakadi.client.Serializer
 import org.zalando.nakadi.client.handler.SubscriptionHandler
-import org.zalando.nakadi.client.scala.model.Event
-import org.zalando.nakadi.client.scala.model.EventEnrichmentStrategy
-import org.zalando.nakadi.client.scala.model.EventStreamBatch
-import org.zalando.nakadi.client.scala.model.EventType
-import org.zalando.nakadi.client.scala.model.ScalaJacksonJsonMarshaller
-import org.zalando.nakadi.client.scala.model.Metrics
-import org.zalando.nakadi.client.scala.model.Partition
-import org.zalando.nakadi.client.scala.model.PartitionStrategy
+import org.zalando.nakadi.client.scala.model._
 import org.zalando.nakadi.client.utils.Uri
-
 import com.fasterxml.jackson.core.`type`.TypeReference
-
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.unmarshalling.Unmarshal
 import com.fasterxml.jackson.module.scala.JsonScalaEnumeration
-import org.zalando.nakadi.client.scala.model.EventEnrichmentStrategyType
-import org.zalando.nakadi.client.scala.model.PartitionStrategyType
 
 class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSet: String = "UTF-8") extends Client {
   import Uri._
@@ -125,11 +115,11 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
     (eventTypeName, params, listener) match {
 
       case (_, _, listener) if listener == null =>
-        logger.info("listener is null")
+        logger.warn("listener is null")
         Some(ClientError("Listener may not be empty(null)!", None))
 
       case (eventType, _, _) if Option(eventType).isEmpty || eventType == "" =>
-        logger.info("eventType is null")
+        logger.warn("eventType is null")
         Some(ClientError("Eventype may not be empty(null)!", None))
 
       case (eventType, StreamParameters(cursor, _, _, _, _, _, _), listener) if Option(eventType).isDefined =>
@@ -140,7 +130,7 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
           params,
           eventType,
           url)
-        val finalUrl = withUrl(url, Some(params))
+        val finalUrl = withUrl(url, params.toQueryParamsMap())
         val eventHandler: EventHandler = new ScalaEventHandlerImpl(des, listener)
         subscriber.subscribe(eventTypeName, finalUrl, cursor, eventHandler)
     }
@@ -149,6 +139,45 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
                               partition: Option[String],
                               listener: Listener[T]): Option[ClientError] = {
     subscriber.unsubscribe(eventTypeName, partition, listener.id)
+  }
+
+  //####################
+  //# High Level API
+  //####################
+
+
+  def subscribe[T <: Event](subscriptionId: UUID,
+                            streamParameters: SubscriptionStreamParameters,
+                            listener: Listener[T])
+                          (implicit des: Deserializer[EventStreamBatch[T]]): Option[ClientError] = {
+
+    (subscriptionId, streamParameters, listener) match {
+      case (subscriptionId, _, _) if subscriptionId == null =>
+        logger.warn("subscriptionId is null")
+        Some(ClientError("SubscriptionId may not be empty(null)!", None))
+
+      case (_, _, listener) if listener == null =>
+        logger.warn("listener is null")
+        Some(ClientError("Listener may not be empty(null)!", None))
+
+
+      case (subscriptionId, SubscriptionStreamParameters(_,_,_, _, _, _, _, _, _), listener) if Option(subscriptionId).isDefined =>
+        val url = Uri.URI_SUBSCRIPTION_TO_EVENT_STREAM(subscriptionId.toString)
+
+        logger.debug("Subscribing [listener={}, subscriptionId={}, parameters={}, url={}]",
+          listener.id,
+          subscriptionId,
+          streamParameters,
+          url
+        )
+
+
+      val finalUrl = withUrl(url, streamParameters.toQueryParamsMap())
+      val eventHandler: EventHandler = new ScalaEventHandlerImpl(des, listener)
+
+      subscriber.subscribe(subscriptionId.toString, finalUrl, None, eventHandler)
+    }
+
   }
 
   //####################
@@ -163,6 +192,8 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
         Left(ClientError(msg, None))
     }
   }
+
+
   private def logFutureOption(future: Future[Option[ClientError]]): Future[Option[ClientError]] = {
     future recover {
       case e: Throwable =>
@@ -170,6 +201,7 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
         Option(ClientError(msg, None))
     }
   }
+
 
   private def mapToEither[T](response: HttpResponse)(
     implicit deserializer: Deserializer[T]): Future[Either[ClientError, Option[T]]] = {
@@ -203,6 +235,7 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
     }
   }
 
+
   private[client] def mapToOption[T](response: HttpResponse): Future[Option[ClientError]] = {
     response.status match {
       case status if (status.isSuccess()) =>
@@ -232,5 +265,72 @@ class ClientImpl(connection: Connection, subscriber: SubscriptionHandler, charSe
         }
     }
   }
+
+  /**
+    * Creates a subscription for EventTypes. The subscription is needed to be able to consume events from EventTypes in
+    * a high level way when Nakadi stores the offsets and manages the rebalancing of consuming clients. The subscription
+    * is identified by its key parameters (owning_application, event_types, consumer_group). If this endpoint is invoked
+    * several times with the same key subscription properties in body (order of even_types is not important) -
+    * the subscription will be created only once and for all other calls it will just return the subscription
+    * that was already created.
+    *
+    * @param subscription Subscription is a high level consumption unit. Subscriptions allow applications to easily scale
+    *                     the number of clients by managing consumed event offsets and distributing load between
+    *                     instances. The key properties that identify subscription are 'owning_application',
+    *                     'event_types' and 'consumer_group'. It's not possible to have two different subscriptions with
+    *                     these properties being the same.
+    * @return either an error which was reported from the Nakadi endpoint in order to initialize a subscription OR
+    *         the initial subscription data enriched with data about the newly created susbcription
+    */
+  override def initSubscription(subscription: Subscription, ser: Serializer[Subscription])
+                               (implicit des: Deserializer[Subscription]): Future[Either[ClientError, Option[Subscription]]] = {
+
+    if(subscription == null) {
+      logger.warn("Subscription is null")
+      Future.successful(Left(ClientError("Subscription must not be null!", None)))
+    }
+    else if (ser == null) {
+      logger.warn("Serializer is null")
+      Future.successful(Left(ClientError("Serializer must not be null!", None)))
+    }
+    else if(des == null) {
+      logger.warn("Deserializer is null")
+      Future.successful(Left(ClientError("Deserializer must not be null!", None)))
+    }
+    else {
+      logFutureEither(
+        connection.post(URI_SUBSCRIPTION, subscription)(ser).flatMap(in => mapToEither(in))
+      )
+    }
+  }
+
+
+  override def initSubscription(subscription: Subscription): Future[Either[ClientError, Option[Subscription]]] =
+    initSubscription(subscription, serializer[Subscription])(deserializer(subscriptionTR))
+
+
+  def commitCursor(subscriptionId: UUID, cursors: List[Cursor], ser: Serializer[List[Cursor]]): Future[Option[ClientError]]= {
+    if(subscriptionId == null) {
+      logger.warn("Subscription is null")
+      Future.successful(Some(ClientError("Subscription must not be null!", None)))
+    }
+    else if(cursors == null || cursors.isEmpty) {
+      logger.warn("list of cursors to be committed is null or empty")
+      Future.successful(Some(ClientError("List of cursors to be committed must not be null or empty!", None)))
+    }
+    else if (ser == null) {
+      logger.warn("Serializer is null")
+      Future.successful(Some(ClientError("Serializer must not be null!", None)))
+    }
+    else {
+      logFutureOption(
+        connection.put(URI_SUBSCRIPTION_CURSOR_COMMIT(subscriptionId.toString), cursors)(ser).flatMap(in => mapToOption(in))
+      )
+    }
+  }
+
+
+  def commitCursor(subscriptionId: UUID, cursors: List[Cursor]): Future[Option[ClientError]] =
+    commitCursor(subscriptionId, cursors, serializer[List[Cursor]])
 
 }

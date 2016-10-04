@@ -1,0 +1,6 @@
+{
+  "owning_application" : "hecate",
+  "event_types":  [ "de.zalando.logistics.laas.hecate.test.process_status_changed" ],
+  "consumer_group": "test subscription",
+  "start_from": "BEGIN"
+}

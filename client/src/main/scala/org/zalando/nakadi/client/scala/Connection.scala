@@ -134,11 +134,11 @@ sealed class ConnectionImpl(val host: String,
 
   def get(endpoint: String): Future[HttpResponse] = {
     logger.info("Get - URL {}", endpoint)
-    executeCall(withHttpRequest(endpoint, HttpMethods.GET, Nil, tokenProvider, None))
+    executeCall(withHttpRequest(endpoint, HttpMethods.GET, Nil, tokenProvider, Map()))
   }
   def delete(endpoint: String): Future[HttpResponse] = {
     logger.info("Delete: {}", endpoint)
-    executeCall(withHttpRequest(endpoint, HttpMethods.DELETE, Nil, tokenProvider, None))
+    executeCall(withHttpRequest(endpoint, HttpMethods.DELETE, Nil, tokenProvider, Map()))
   }
 
   def put[T](endpoint: String, model: T)(implicit serializer: Serializer[T]): Future[HttpResponse] = {

@@ -1,0 +1,15 @@
+[
+  {
+    "process_instance": "/sites/erfurt/processes/pick/123e4567-e89b-12d3-a456-426655440000",
+    "subject": "/sites/erfurt/processes/pick/123e4567-e89b-12d3-a456-426655440000/tasks/123e4567-e89b-12d3-a456-426655440000",
+    "status": "/tasks/status/in-progress",
+    "subject_metadata": {
+      "ql": "QL-1",
+      "tenant": "/tenants/X"
+    },
+    "metadata" : {
+      "eid" : "517e1971-3801-4643-b215-b132dbbad185",
+      "occurred_at" : "2016-08-10T16:39:57-08:00"
+    }
+  }
+]

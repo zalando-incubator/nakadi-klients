@@ -20,7 +20,7 @@ object HttpFactory {
     */
   type TokenProvider = () => String
 
-  def withUrl(url: String, params: Option[StreamParameters]) = {
+  def withUrl(url: String, params: Map[String, String]) = {
     val paramsList = withQueryParams(params)
     val urlParams =
       if (!paramsList.isEmpty)
@@ -33,7 +33,7 @@ object HttpFactory {
                       httpMethod: HttpMethod,
                       additionalHeaders: Seq[HttpHeader],
                       tokenProvider: Option[TokenProvider],
-                      params: Option[StreamParameters]): HttpRequest = {
+                      params: Map[String, String]): HttpRequest = {
     val allHeaders: Seq[HttpHeader] = tokenProvider match {
       case None => additionalHeaders
       case Some(token) =>
@@ -74,20 +74,12 @@ object HttpFactory {
 
     HttpRequest(uri = url, method = HttpMethods.GET).withHeaders(allHeaders)
   }
-  private def withQueryParams(params: Option[StreamParameters]): Seq[String] = {
-    params match {
-      case Some(
-          StreamParameters(_, batchLimit, streamLimit, batchFlushTimeout, streamTimeout, streamKeepAliveLimit, _)) =>
-        val parameters = List(("batch_limit", batchLimit),
-                              ("stream_limit", streamLimit), //
-                              ("batch_flush_timeout", batchFlushTimeout),
-                              ("stream_timeout", streamTimeout), //
-                              ("stream_keep_alive_limit", streamKeepAliveLimit))
-        for {
-          (key, optional) <- parameters; value <- optional
+
+  private def withQueryParams(params: Map[String, String]): Seq[String] = {
+    (for {
+          (key, value) <- params
         } yield (key + "=" + value)
-      case None => Nil
-    }
+    ).to[collection.immutable.Seq]
   }
 
   private def withDefaultHeaders(cursor: Option[Cursor], flowId: Option[String]): Seq[HttpHeader] = {

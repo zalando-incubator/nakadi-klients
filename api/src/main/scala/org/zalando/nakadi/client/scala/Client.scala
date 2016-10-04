@@ -6,6 +6,7 @@ import org.zalando.nakadi.client.Serializer
 import org.zalando.nakadi.client.scala.model._
 import org.zalando.nakadi.client._
 import com.fasterxml.jackson.core.`type`.TypeReference
+import _root_.java.util.UUID
 
 
 case class ClientError(msg: String, status: Option[Integer] = None, exception: Option[Throwable] = None)
@@ -159,5 +160,63 @@ trait Client {
   def unsubscribe[T <: Event](eventTypeName: String,
                               partition: Option[String],
                               listener: Listener[T]): Option[ClientError]
+
+
+  /********************************
+   * High Level API
+   ********************************/
+
+
+   /**
+    * GET /subscriptions/{subscription_id}/events
+    *
+    * Starts a new stream for reading events from this subscription. The data will be automatically rebalanced
+    * between streams of one subscription. The minimal consumption unit is a partition, so it is possible to start as
+    * many streams as the total number of partitions in event-types of this subscription. The rebalance currently
+    * only operates with the number of partitions so the amount of data in event-types/partitions is not considered
+    * during autorebalance.
+    * The position of the consumption is managed by Nakadi. The client is required to commit the cursors he gets in
+    * a stream. This also depends on the `commit_mode` parameter that is set for the stream.
+    *
+    * @param subscriptionId Id of subscription
+    * @param streamParameters stream parameters for subscriptions
+    */
+  def subscribe[T <: Event](subscriptionId: UUID, streamParameters: SubscriptionStreamParameters,  listener: Listener[T])
+                           (implicit des: Deserializer[EventStreamBatch[T]]): Option[ClientError]
+
+
+  /**
+   * Creates a subscription for EventTypes. The subscription is needed to be able to consume events from EventTypes in
+   * a high level way when Nakadi stores the offsets and manages the rebalancing of consuming clients. The subscription
+   * is identified by its key parameters (owning_application, event_types, consumer_group). If this endpoint is invoked
+   * several times with the same key subscription properties in body (order of even_types is not important) -
+   * the subscription will be created only once and for all other calls it will just return the subscription
+   * that was already created.
+   *
+   * @param subscription  Subscription is a high level consumption unit. Subscriptions allow applications to easily scale
+   *                      the number of clients by managing consumed event offsets and distributing load between
+   *                      instances. The key properties that identify subscription are 'owning_application',
+   *                      'event_types' and 'consumer_group'. It's not possible to have two different subscriptions with
+   *                      these properties being the same.
+   *
+   * @return either an error which was reported from the Nakadi endpoint in order to initialize a subscription OR
+    *        the initial subscription data enriched with data about the newly created susbcription
+   */
+  def initSubscription(subscription: Subscription, ser: Serializer[Subscription])
+                      (implicit des: Deserializer[Subscription]): Future[Either[ClientError, Option[Subscription]]]
+  def initSubscription(subscription: Subscription): Future[Either[ClientError, Option[Subscription]]]
+
+
+  /**
+    *  Commit soffsets of the subscription. The behavior of commit is specific to commit_mode parameter of the
+    *  client stream (please see details in subscription streaming endpoint specification)
+    *[
+    * @param subscriptionId  id of the subscription
+    * @param cursors  recently received cursors to be commited
+    */
+  def commitCursor(subscriptionId: UUID, cursors: List[Cursor]): Future[Option[ClientError]]
+  def commitCursor(subscriptionId: UUID, cursors: List[Cursor], ser: Serializer[List[Cursor]]): Future[Option[ClientError]]
+
+
 
 }

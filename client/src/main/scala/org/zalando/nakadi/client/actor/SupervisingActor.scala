@@ -91,16 +91,20 @@ class SupervisingActor(val connection: Connection, val subscriptionHandler: Subs
           val newSubscription = SubscribeMsg(eventTypeName, endpoint, cursor, handler)
           subscribe(newSubscription)
         case None =>
-          log.warning("Did not find any SubscriptionKey for [{}]", terminatedActor.path.name)
+          log.warning("Did not find any SubscriptionKey for [{}] -> might be it was unsubscribed before",
+                      terminatedActor.path.name)
         case e =>
           log.error("Received unexpected message! [{}]", e)
       }
   }
 
+
+
+
   def subscribe(subscribe: SubscribeMsg) = {
     subscriptionCounter += 1
     val SubscribeMsg(eventTypeName, endpoint, optCursor, eventHandler) = subscribe
-    log.info("Subscription nr [{}] - cursor [{}] - eventType [{}] - listener [{}]",
+    log.debug("Subscription nr [{}] - cursor [{}] - eventType [{}] - listener [{}]",
              subscriptionCounter,
              optCursor,
              eventTypeName,
@@ -129,6 +133,7 @@ class SupervisingActor(val connection: Connection, val subscriptionHandler: Subs
     subscriptions.addCursor(subscriptionKey, optCursor)
   }
 
+
   def unsubscribe(unsubscription: UnsubscribeMsg): Unit = {
     val UnsubscribeMsg(eventTypeName, partition, eventHandlerId) = unsubscription
     val key: SubscriptionKey                                     = SubscriptionKey(eventTypeName, partition)
@@ -141,5 +146,10 @@ class SupervisingActor(val connection: Connection, val subscriptionHandler: Subs
         log.warning("Listener not found for {}", unsubscription)
     }
   }
+
+
+
+
+
 
 }
