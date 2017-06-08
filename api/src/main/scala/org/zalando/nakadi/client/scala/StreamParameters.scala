@@ -9,5 +9,5 @@ case class StreamParameters(cursor: Option[Cursor] = None,
                             streamTimeout: Option[Integer] = None,
                             streamKeepAliveLimit: Option[Integer] = None,
                             flowId: Option[String] = None,
-                            rate: Option[Int] = Some(1),
-                            burstMaxSize: Option[Integer] = Some(10))
+                            rate: Option[Int] = None,
+                            burstMaxSize: Option[Int] = None)

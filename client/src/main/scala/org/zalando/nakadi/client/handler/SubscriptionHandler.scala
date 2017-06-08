@@ -84,7 +84,15 @@ class SubscriptionHandlerImpl(val connection: Connection) extends SubscriptionHa
     val result = Source(List(cursor))
       .via(requestFlow)
       .withAttributes(ActorAttributes.supervisionStrategy(decider()))
-      .runForeach(_.throttle(streamParams.rate.get,1.second,streamParams.burstMaxSize.get,ThrottleMode.shaping).runWith(Sink.fromSubscriber(subscriber)))
+      .runForeach({ source =>
+        val sourceWithAdjustments = streamParams.rate match {
+          case None => source
+          case Some(rate) => {
+            source.throttle(rate, 1.second, streamParams.burstMaxSize.getOrElse(1), ThrottleMode.shaping)
+          }
+        }
+        sourceWithAdjustments.runWith(Sink.fromSubscriber(subscriber))
+      })
 
     result.onComplete {
       case Success(requestSource) ⇒
